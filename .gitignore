@@ -1,0 +1,7 @@
+SFML-2.5.1
+.depend
+*.o
+*.exe
+*.dll
+.vscode
+c_cpp_properties.json
