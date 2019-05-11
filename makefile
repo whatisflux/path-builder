@@ -1,5 +1,5 @@
 CPP = g++
-CPPFLAGS = -g -std=c++17 -ID:/dev/opengl/SFML-2.5.1/include
+CPPFLAGS = -g -std=c++17 -I"SFML-2.5.1/include"
 
 SRCS = test.cpp CalculatePathPoints.cpp
 
