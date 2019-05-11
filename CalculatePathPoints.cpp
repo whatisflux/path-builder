@@ -16,6 +16,8 @@ std::vector<pb::Vector> pb::CalculateRelFloorPositions(bool* ropeMask, int width
 
         if (theta < 0) continue;
 
+        printf("%d %f %f, %f\n", y, cam.theta, theta, rayLength);
+
         for (int x = 0; x < width; x++)
         {
             int i = y * width + x;
@@ -41,8 +43,8 @@ std::vector<pb::Vector> pb::CalculateRelFloorPositions(bool* ropeMask, int width
     for (int i = 0; i < points.size(); i++)
     {
         points[i] = {
-            points[i].x / maxdx,
-            points[i].y / maxdy
+            points[i].x,
+            points[i].y
         };
     }
 
