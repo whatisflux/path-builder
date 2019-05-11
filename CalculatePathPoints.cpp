@@ -45,28 +45,6 @@ std::vector<pb::Vector> pb::CalculateRelFloorPositions(bool* ropeMask, int width
             points[i].y / maxdy
         };
     }
-    // for (int y = 0; y < height; y++)
-    // {
-    //     for (int x = 0; x < width; x++)
-    //     {
-    //         int i = (y * width + x);
-    //         if (!isRopePix[i])
-    //         {
-    //             pixels[i*4] = 0;
-    //             pixels[i*4+1] = 0;
-    //             pixels[i*4+2] = 0;
-    //             pixels[i*4+3] = 255;
-    //         } else
-    //         {
-    //             char dxi = (char)(abs(dx[i]) * 255.f / maxdx);
-    //             char dyi = (char)(abs(dy[i]) * 255.f / maxdy);
-    //             pixels[i*4] = dxi;
-    //             pixels[i*4+1] = dyi;
-    //             pixels[i*4+2] = 0;
-    //             pixels[i*4+3] = 255;
-    //         }
-    //     }
-    // }
 
     return points;
 }
