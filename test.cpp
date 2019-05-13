@@ -49,7 +49,7 @@ int main()
     sf::Sprite floorDiagram;
     auto floorTexture = PointsToFloorDiagram(points, 400);
     floorDiagram.setTexture(floorTexture);
-    floorDiagram.setPosition(sf::Vector2f(200, 400));
+    floorDiagram.setPosition(sf::Vector2f(200, 150));
 
     // for (int i = 0; i < points.size(); i++)
     // {
