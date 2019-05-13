@@ -1,4 +1,4 @@
-#include "CalculatePathPoints.h"
+#include "PathBuilder.h"
 
 std::vector<pb::Vector> pb::CalculateRelFloorPositions(bool* ropeMask, int width, int height, pb::Camera cam)
 {
