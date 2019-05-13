@@ -31,8 +31,8 @@ namespace pb
             this->screenWidth = screenWidth;
             this->screenHeight = screenHeight;
 
-            fovx = 2 * atan(screenWidth / (2 * (sqrtf(4 * focalLength * focalLength - screenWidth * screenWidth / 4) - focalLength)));
-            fovy = 2 * atan(screenHeight / (2 * (sqrtf(4 * focalLength * focalLength - screenHeight * screenHeight / 4) - focalLength)));
+            fovx = 2 * atan(screenWidth / (2 * focalLength));
+            fovy = 2 * atan(screenHeight / (2 * focalLength));
         }
 
         float getFovX() { return fovx; }
