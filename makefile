@@ -1,7 +1,7 @@
 CPP = g++
 CPPFLAGS = -g -std=c++17 -I"SFML-2.5.1/include"
 
-SRCS = test.cpp CalculatePathPoints.cpp
+SRCS = test.cpp PathBuilder.cpp
 
 LIB= -L"SFML-2.5.1/lib" -lsfml-graphics -lsfml-window -lsfml-system
 INC= -I"SFML-2.5.1/include"
