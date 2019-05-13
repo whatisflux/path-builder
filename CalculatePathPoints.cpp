@@ -9,7 +9,7 @@ std::vector<pb::Vector> pb::CalculateRelFloorPositions(bool* ropeMask, int width
     for (int y = 0; y < height; y++)
     {
         float sy = (float)y / (float)height * 2.f - 1.f;
-        float pixTheta = cam.getFovY() / 2.f * sy;
+        float pixTheta = atan(cam.screenHeight * sy / (2.f * cam.focalLength));
         float theta = cam.theta + pixTheta;
 
         float rayLength = cam.height / tanf(theta);
@@ -25,7 +25,7 @@ std::vector<pb::Vector> pb::CalculateRelFloorPositions(bool* ropeMask, int width
             if (!ropeMask[i]) continue;
 
             float sx = (float)x / (float)width * 2.f - 1.f;
-            float pixPhi = cam.getFovX() / 2.f * sx;
+            float pixPhi = atan(cam.screenWidth * sx / (2.f * cam.focalLength));
             float phi = cam.phi + pixPhi;
 
             float dx = rayLength * sin(phi);
