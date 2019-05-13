@@ -1,6 +1,6 @@
 #include <SFML/Graphics.hpp>
 
-#include "CalculatePathPoints.h"
+#include "PathBuilder.h"
 
 #define WIDTH 800
 #define HEIGHT 800
