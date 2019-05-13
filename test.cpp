@@ -50,12 +50,6 @@ int main()
     auto floorTexture = PointsToFloorDiagram(points, 400);
     floorDiagram.setTexture(floorTexture);
     floorDiagram.setPosition(sf::Vector2f(200, 150));
-
-    // for (int i = 0; i < points.size(); i++)
-    // {
-    //     printf("(%f, %f)", points[i].x, points[i].y);
-    // }
-    // printf("\n");
     
     while (window.isOpen())
     {
