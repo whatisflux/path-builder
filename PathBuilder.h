@@ -25,6 +25,9 @@ namespace pb
         float phi;
         float height;
 
+        float posX;
+        float posY;
+
         Camera(float focalLength, float screenWidth, float screenHeight)
         {
             this->focalLength = focalLength;
@@ -40,5 +43,5 @@ namespace pb
     };
 
     std::vector<pb::Vector> CalculateRelFloorPositions(bool* pixels, int width, int height, pb::Camera cam);
-
+    std::vector<pb::Vector> RelPositionsToAbsPositions(std::vector<pb::Vector> relative, pb::Camera cam);
 }

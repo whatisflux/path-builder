@@ -50,3 +50,16 @@ std::vector<pb::Vector> pb::CalculateRelFloorPositions(bool* ropeMask, int width
 
     return points;
 }
+
+std::vector<pb::Vector> RelPositionsToAbsPositions(std::vector<pb::Vector> relative, pb::Camera cam)
+{
+    std::vector<pb::Vector> absolute(relative);
+
+    for (int i = 0; i < absolute.size(); i++)
+    {
+        absolute[i].x += cam.posX;
+        absolute[i].y += cam.posY;
+    }
+    
+    return absolute;
+}
