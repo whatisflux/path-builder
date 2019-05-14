@@ -6,12 +6,12 @@
 int main()
 {
     sf::RenderWindow window(sf::VideoMode(800, 600), "UDP Image Receiver Test");
-    window.setFramerateLimit(20);
 
     sf::Texture receivedTexture;
     receivedTexture.create(80, 60);
     sf::Sprite receivedSprite;
     receivedSprite.setTexture(receivedTexture);
+    receivedSprite.setScale(10, 10);
 
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -36,21 +36,27 @@ int main()
         int bytes = recvfrom(socketS, buffer, sizeof(buffer), 0, (sockaddr*)&from, &fromlen);
         if (bytes != SOCKET_ERROR)
         {
-            printf("Received message from %s (%d): %s\n", inet_ntoa(from.sin_addr), bytes, buffer);
+            printf("Received message from %s (%d bytes)\n", inet_ntoa(from.sin_addr), bytes);
             if (bytes == 600)
             {
-                printf("Creating image from bitmap");
+                printf("Creating image from bitmap...\n");
                 // Image was received
-                bool* bitmap = reinterpret_cast<bool*>(buffer);
-                sf::Uint8 pixels[80*60*4];
-                for (int i = 0; i < 80 * 60; i++)
+                sf::Uint8 pixels[60 * 80 * 4];
+
+                for (int i = 0; i < bytes; i++)
                 {
-                    // printf("%d", bitmap[i]);
-                    pixels[i*4] = bitmap[i] * 255;
-                    pixels[i*4+1] = bitmap[i] * 255;
-                    pixels[i*4+2] = bitmap[i] * 255;
-                    pixels[i*4+3] = 255;
+                    for (int bit = 0; bit < 8; bit++)
+                    {
+                        // Get the bit-th bit of the byte at buffer[i]
+                        sf::Uint8 val = (buffer[i] >> bit) & 1;
+                        int p = (i * 8 + bit) * 4;
+                        pixels[p] = val * 255;
+                        pixels[p+1] = val * 255;
+                        pixels[p+2] = val * 255;
+                        pixels[p+3] = 255;
+                    }
                 }
+
                 receivedTexture.update(pixels);
                 receivedSprite.setTexture(receivedTexture);
             }
