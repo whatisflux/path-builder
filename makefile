@@ -1,5 +1,5 @@
 CPP = g++
-CPPFLAGS = -g -std=c++17 -I"SFML-2.5.1/include"
+CPPFLAGS = -g -std=c++17
 
 SRCS = test.cpp PathBuilder.cpp
 
@@ -18,6 +18,9 @@ depend: .depend
 	$(CPP) $(CPPFLAGS) $(INC) -MM $^>>./.depend
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(OBJS) udp-img.o
+
+udp-img: udp-img.cpp
+	$(CPP) -o udp-img udp-img.cpp $(INC) $(LIB) -lws2_32
 
 include .depend
