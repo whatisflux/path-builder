@@ -44,8 +44,6 @@ int main()
     }
     auto points = pb::CalculateRelFloorPositions(ropeMask, imgWidth, imgHeight, s6cam);
 
-    printf("FOV: (%f, %f)", s6cam.getFovX(), s6cam.getFovY());
-
     sf::Sprite floorDiagram;
     auto floorTexture = PointsToFloorDiagram(points, 400);
     floorDiagram.setTexture(floorTexture);
@@ -103,15 +101,13 @@ sf::Texture PointsToFloorDiagram(std::vector<pb::Vector> points, int width)
         int sx = (x - minx) * widthScale;
         int sy = height - (y - miny) * heightScale;
 
+        if (sy >= height || sx >= width) continue;
+
         img.setPixel(sx, sy, sf::Color(0, 255, 0, 255));
     }
 
-    printf("x: (%f, %f), y: (%f, %f)\n", minx, maxx, miny, maxy);
-
     sf::Texture tex;
     tex.loadFromImage(img);
-
-    
 
     return tex;
 }
