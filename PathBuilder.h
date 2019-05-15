@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <math.h>
+#include <string>
 #include <vector>
 
 namespace pb
@@ -40,6 +41,30 @@ namespace pb
 
         float getFovX() { return fovx; }
         float getFovY() { return fovy; }
+    };
+
+    std::string serializeFloat(float v);
+
+    struct Waypoint
+    {
+        pb::Vector position;
+        bool insideIsLeft;
+
+        std::string serialize();
+    };
+    struct Edge
+    {
+        std::vector<pb::Waypoint> waypoints;
+        bool isClosed;
+
+        std::string serialize();
+    };
+    struct Path
+    {
+        pb::Edge edge1;
+        pb::Edge edge2;
+
+        std::string serialize();
     };
 
     std::vector<pb::Vector> CalculateRelFloorPositions(bool* pixels, int width, int height, pb::Camera cam);

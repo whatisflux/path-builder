@@ -1,5 +1,45 @@
 #include "PathBuilder.h"
 
+std::string pb::serializeFloat(float v)
+{
+    // Convert pointer to the float to a pointer to an int, and then deref it to get a value
+    int bits = *(int*)&v;
+    std::string serialized;
+    for (int byte = 0; byte < 4; byte++)
+    {
+        // Shift the wanted bits to the lowest 8 bits
+        // Bitwise-and it with 255 to clear out unwanted higher bits
+        int val = (bits >> (8 * (3 - byte))) & 0b11111111;
+        serialized += (char)val;
+    }
+    return serialized;
+}
+
+std::string pb::Waypoint::serialize()
+{
+    auto serializedX = serializeFloat(position.x);
+    auto serializedY = serializeFloat(position.y);
+    char serializedDir = insideIsLeft ? (char)0b11111111 : (char)0;
+    return 'p' + serializedX + serializedY + serializedDir;
+}
+
+std::string pb::Edge::serialize()
+{
+    std::string serialized;
+    serialized += 'e';
+    for (int i = 0; i < waypoints.size(); i++)
+    {
+        serialized += waypoints[i].serialize();
+    }
+    if (isClosed) serialized += 'z';
+    return serialized;
+}
+
+std::string pb::Path::serialize()
+{
+    return edge1.serialize() + edge2.serialize();
+}
+
 std::vector<pb::Vector> pb::CalculateRelFloorPositions(bool* ropeMask, int width, int height, pb::Camera cam)
 {
     std::vector<pb::Vector> points;
