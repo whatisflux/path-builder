@@ -5,6 +5,9 @@
 
 #include "PathBuilder.h"
 
+#define IN_WIDTH 80
+#define IN_HEIGHT 60
+
 sf::Texture PointsToFloorDiagram(std::vector<pb::Vector> points, int width);
 
 int main()
@@ -12,7 +15,7 @@ int main()
     sf::RenderWindow window(sf::VideoMode(800, 800), "UDP Image Receiver Test");
 
     sf::Texture receivedTexture;
-    receivedTexture.create(80, 60);
+    receivedTexture.create(IN_WIDTH, IN_HEIGHT);
     sf::Sprite receivedSprite;
     receivedSprite.setTexture(receivedTexture);
     receivedSprite.setScale(2, 2);
@@ -21,7 +24,7 @@ int main()
     sf::Sprite floorSprite;
     floorSprite.setPosition(200, 200);
 
-    pb::Camera cam(4.35f, 5.95f, 3.55f);
+    pb::Camera cam(4.89f, 5.95f, 3.35f);
     cam.height = 2.f;
     cam.theta = 0.43633231299f;
     cam.phi = 0;
@@ -41,23 +44,21 @@ int main()
     SOCKET socketS = socket(AF_INET, SOCK_DGRAM, 0);
     bind(socketS, (sockaddr*)&local, sizeof(local));
 
+
     while (window.isOpen())
     {
-        char buffer[1024];
+        char buffer[4096];
         ZeroMemory(buffer, sizeof(buffer));
-
-        // printf("Waiting for incoming image...\n");
 
         int bytes = recvfrom(socketS, buffer, sizeof(buffer), 0, (sockaddr*)&from, &fromlen);
         if (bytes != SOCKET_ERROR)
         {
             printf("Received message from %s (%d bytes)\n", inet_ntoa(from.sin_addr), bytes);
-            if (bytes == 600)
+            if (bytes == IN_WIDTH * IN_HEIGHT / 8)
             {
-                // printf("Creating image from bitmap...\n");
                 // Image was received
-                bool bitmap[60 * 80];
-                sf::Uint8 pixels[60 * 80 * 4];
+                bool bitmap[IN_WIDTH * IN_HEIGHT];
+                sf::Uint8 pixels[IN_WIDTH * IN_HEIGHT * 4];
 
                 for (int i = 0; i < bytes; i++)
                 {
@@ -77,11 +78,8 @@ int main()
                 receivedTexture.update(pixels);
                 receivedSprite.setTexture(receivedTexture);
 
-                // printf("Calculating floor points...\n");
-                auto floorPoints = pb::CalculateRelFloorPositions(bitmap, 80, 60, cam);
-                // printf("Found %d floor points\n", floorPoints.size());
+                auto floorPoints = pb::CalculateRelFloorPositions(bitmap, IN_WIDTH, IN_HEIGHT, cam);
                 floorTex = PointsToFloorDiagram(floorPoints, 400);
-                // printf("Floor texture made\n");
                 floorSprite.setTexture(floorTex);
             }
         }
