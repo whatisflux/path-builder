@@ -14,6 +14,9 @@ test: $(OBJS)
 udp-img: udp-img.o PathBuilder.o
 	$(CPP) -o udp-img udp-img.o PathBuilder.o $(INC) $(LIB) -lws2_32
 
+test-path-packet: test-path-packet.o PathBuilder.o
+	$(CPP) -o test-path-packet test-path-packet.o PathBuilder.o -lws2_32
+
 # depend: .depend
 
 # .depend: $(SRCS)
@@ -27,6 +30,9 @@ PathBuilder.o: PathBuilder.cpp
 
 udp-img.o: udp-img.cpp
 	$(CPP) $(CPPFLAGS) -c udp-img.cpp -o udp-img.o $(INC)
+
+test-path-packet.o: test-path-packet.cpp
+	$(CPP) $(CPPFLAGS) -c test-path-packet.cpp -o test-path-packet.o
 
 clean:
 	rm -f $(OBJS) udp-img.o

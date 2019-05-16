@@ -20,18 +20,19 @@ std::string pb::Waypoint::serialize()
     auto serializedX = serializeFloat(position.x);
     auto serializedY = serializeFloat(position.y);
     char serializedDir = insideIsLeft ? (char)0b11111111 : (char)0;
-    return 'p' + serializedX + serializedY + serializedDir;
+    printf("%s|%s|%c\n", serializedX.c_str(), serializedY.c_str(), serializedDir);
+    return "p" + serializedX + serializedY + serializedDir;
 }
 
 std::string pb::Edge::serialize()
 {
     std::string serialized;
-    serialized += 'e';
+    serialized += "e";
     for (int i = 0; i < waypoints.size(); i++)
     {
         serialized += waypoints[i].serialize();
     }
-    if (isClosed) serialized += 'z';
+    if (isClosed) serialized += "z";
     return serialized;
 }
 
