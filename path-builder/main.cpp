@@ -8,6 +8,7 @@
 #define IN_HEIGHT 60
 
 #define OUT_WIDTH 200
+#define HISTOGRAM_SCAN_HEIGHT 100
 #define N_WINDOWS 30
 #define WINDOW_WIDTH 10
 
@@ -34,6 +35,8 @@ Edge transformEdge(Edge edge, Size src, Rect2f dst)
 	return edgeT;
 }
 
+std::vector<int> generateHistogram(Mat image, int rowStart, int rowEnd);
+int findPeakCol(std::vector<int> histogram, int colStart, int colEnd);
 Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2f* realRect, Size* imgSize);
 bool* CreateBitmapFromMat(Mat image);
 
@@ -290,8 +293,10 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2
 	int margin = WINDOW_WIDTH / 2;
 
 	// Begin sliding window search
-	int leftx = OUT_WIDTH / 2 - margin - 1;
-	int rightx = OUT_WIDTH / 2 + margin + 1;
+	auto laneHistogram = generateHistogram(flippedWarped, outHeight - HISTOGRAM_SCAN_HEIGHT, outHeight);
+	int leftx = findPeakCol(laneHistogram, 0, OUT_WIDTH / 2);
+	int rightx = findPeakCol(laneHistogram, OUT_WIDTH / 2, OUT_WIDTH);
+
 
 	// Center of each window
 	std::vector<Point2f> leftLaneComplex(0);
@@ -300,6 +305,9 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2
 	Mat slidingImg(flippedWarped);
 #ifdef _D_DEBUG
 	Mat slidImgDeb = slidingImg.clone();
+
+	line(slidImgDeb, Point(OUT_WIDTH / 2, outHeight - HISTOGRAM_SCAN_HEIGHT), Point(OUT_WIDTH / 2, outHeight), Scalar(255, 0, 255));
+	line(slidImgDeb, Point(0, outHeight - HISTOGRAM_SCAN_HEIGHT), Point(OUT_WIDTH - 1, outHeight - HISTOGRAM_SCAN_HEIGHT), Scalar(255, 0, 255));
 #endif
 
 #ifdef _D_DEBUG
@@ -427,4 +435,40 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2
 		
 
 	return path;
+}
+
+std::vector<int> generateHistogram(Mat image, int rowStart, int rowEnd)
+{
+	std::vector<int> histogram(image.cols);
+	if (rowStart < 0 || rowStart > image.rows) return histogram;
+	if (rowEnd < 0 || rowStart > image.rows || rowEnd <= rowStart) return histogram;
+
+	for (int x = 0; x < image.cols; x++)
+	{
+		int sum = 0;
+		for (int y = rowStart; y < rowEnd; y++)
+		{
+			sum += (int)image.at<Vec3b>(y, x)[0];
+		}
+		histogram[x] = sum;
+	}
+	return histogram;
+}
+
+int findPeakCol(std::vector<int> histogram, int colStart, int colEnd)
+{
+	if (colStart < 0 || colStart > histogram.size()) return -1;
+	if (colEnd < 0 || colEnd > histogram.size() || colEnd <= colStart) return -1;
+
+	int max = -1e9;
+	int maxIndex = -1;
+	for (int i = colStart; i < colEnd; i++)
+	{
+		if (histogram[i] > max)
+		{
+			max = histogram[i];
+			maxIndex = i;
+		}
+	}
+	return maxIndex;
 }
