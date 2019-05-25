@@ -1,15 +1,153 @@
 #include <iostream>
+#include <winsock2.h>
 #include <opencv2/opencv.hpp>
 #include "Path.h"
 #include "Camera.h"
 
-using namespace cv;
-using namespace std;
+#define IN_WIDTH 80
+#define IN_HEIGHT 60
 
-Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam);
+#define OUT_WIDTH 200
+#define N_WINDOWS 30
+#define WINDOW_WIDTH 10
+
+#ifdef _DEBUG
+#define _D_DEBUG
+#endif
+
+using namespace cv;
+
+// Transform edge from screen space to world space
+Edge transformEdge(Edge edge, Size src, Rect2f dst)
+{
+	Edge edgeT;
+	edgeT.isClosed = edge.isClosed;
+	for (int i = 0; i < edge.waypoints.size(); i++)
+	{
+		Waypoint o = edge.waypoints[i];
+		Waypoint t;
+		t.x = (o.x / src.width) * dst.width + dst.x;
+		t.y = (o.y / src.height) * dst.height + dst.y;
+		t.insideIsLeft = o.insideIsLeft;
+		edgeT.waypoints.push_back(t);
+	}
+	return edgeT;
+}
+
+Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2f* realRect, Size* imgSize);
 bool* CreateBitmapFromMat(Mat image);
 
-int main(int argc, char** argv)
+int main_udp();
+int main_test();
+
+int main()
+{
+	return main_test();
+}
+
+int main_udp()
+{
+	// Setup socket
+	WSADATA wsaData;
+	int status = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (status != 0)
+	{
+		printf("ERROR STARTING WINSOCK: %d\n", status);
+	}
+
+	struct sockaddr_in local;
+	struct sockaddr_in from;
+	int fromlen = sizeof(from);
+	local.sin_family = AF_INET;
+	local.sin_port = htons(1234);
+	local.sin_addr.s_addr = INADDR_ANY;
+
+	struct sockaddr_in dest;
+	dest.sin_family = AF_INET;
+	//dest.sin_addr.s_addr = inet_addr("192.168.43.99");
+	dest.sin_port = htons(1234);
+
+	SOCKET socketS = socket(AF_INET, SOCK_DGRAM, 0);
+	if (socketS == INVALID_SOCKET)
+	{
+		printf("ERROR MAKING SOCKET: %d", WSAGetLastError());
+	}
+	int result = bind(socketS, (sockaddr*)&local, sizeof(local));
+	if (result == SOCKET_ERROR)
+	{
+		printf("ERROR BINDING SOCKET: %d", WSAGetLastError());
+	}
+
+	Camera cam(4.89f, 5.95f, 3.35f);
+	cam.height = 2.f;
+	cam.theta = 0.43633231299f;
+	cam.phi = 0;
+	while (true)
+	{
+		char buffer[4096];
+		ZeroMemory(buffer, sizeof(buffer));
+
+		int bytes = recvfrom(socketS, buffer, sizeof(buffer), 0, (sockaddr*)&from, &fromlen);
+		printf("Message received, checking error\n");
+		if (bytes != SOCKET_ERROR)
+		{
+			printf("Received message from %s (%d bytes)\n", "someone", bytes);
+			if (bytes == IN_WIDTH * IN_HEIGHT / 8)
+			{
+				// Image was received
+				bool bitmap[IN_WIDTH * IN_HEIGHT];
+
+				for (int i = 0; i < bytes; i++)
+				{
+					for (int bit = 0; bit < 8; bit++)
+					{
+						// Get the bit-th bit of the byte at buffer[i]
+						unsigned char val = (buffer[i] >> bit) & 1;
+						int p = (i * 8 + bit) * 4;
+						bitmap[i * 8 + bit] = val;
+					}
+				}
+
+				Rect2f realRect;
+				Size2i imgSize;
+				Path screenPath = CreatePathFromBitmap(bitmap, IN_WIDTH, IN_HEIGHT, cam, &realRect, &imgSize);
+
+				Mat dispPath(imgSize, CV_8UC3, Scalar(0, 0, 0));
+				for (int i = 1; i < screenPath.left.waypoints.size(); i++)
+				{
+					Waypoint point1 = screenPath.left.waypoints[i - 1];
+					Waypoint point2 = screenPath.left.waypoints[i];
+					line(dispPath, Point2i(point1.x, point1.y), Point2i(point2.x, point2.y), Scalar(0, 0, 255));
+				}
+				for (int i = 1; i < screenPath.right.waypoints.size(); i++)
+				{
+					Waypoint point1 = screenPath.right.waypoints[i - 1];
+					Waypoint point2 = screenPath.right.waypoints[i];
+					line(dispPath, Point2i(point1.x, point1.y), Point2i(point2.x, point2.y), Scalar(255, 0, 0));
+				}
+
+				// Path that is actually in floor space
+				Path floorPath;
+				floorPath.left = transformEdge(screenPath.left, imgSize, realRect);
+				floorPath.right = transformEdge(screenPath.right, imgSize, realRect);
+
+				std::string serializedFloorPath = floorPath.serialize();
+				sendto(socketS, serializedFloorPath.c_str(), serializedFloorPath.length(), 0, (sockaddr*)&dest, sizeof(dest));
+
+				imshow("Path", dispPath);
+				waitKey(1);
+			}
+		}
+		else
+		{
+			printf("Error! WSA: %d\n", WSAGetLastError());
+		}
+	}
+
+	return 0;
+}
+
+int main_test()
 {
 
 	Mat image;
@@ -17,7 +155,7 @@ int main(int argc, char** argv)
 
 	if (!image.data) // Check for invalid input
 	{
-		cout << "Could not open or find the image" << std::endl;
+		std::cout << "Could not open or find the image" << std::endl;
 		return -1;
 	}
 
@@ -27,7 +165,9 @@ int main(int argc, char** argv)
 	cam.phi = 0;
 
 	bool* bitmap = CreateBitmapFromMat(image);
-	CreatePathFromBitmap(bitmap, image.cols, image.rows, cam);
+	Rect2f realRect;
+	Size imgSize;
+	CreatePathFromBitmap(bitmap, image.cols, image.rows, cam, &realRect, &imgSize);
 
 
 	waitKey(0); // Wait for a keystroke in the window
@@ -35,6 +175,11 @@ int main(int argc, char** argv)
 	free(bitmap);
 
 	return 0;
+}
+
+void dumbDumb()
+{
+	
 }
 
 bool* CreateBitmapFromMat(Mat image)
@@ -54,7 +199,7 @@ bool* CreateBitmapFromMat(Mat image)
 	return bitmap;
 }
 
-Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
+Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2f* realRect, Size* imgSize)
 {
 	Mat image(height, width, CV_8UC3, Scalar(0, 0, 0));
 	
@@ -69,7 +214,9 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 		}
 	}
 
+#ifdef _D_DEBUG
 	imshow("Input", image);
+#endif
 
 	// Performing the perspective warp
 
@@ -77,7 +224,7 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 	Mat outputQuad(4, 2, CV_32F);
 
 	Mat lambda(2, 4, CV_32FC1);
-	Mat warped(500, 500, CV_8UC3);
+	Mat warped;
 
 	Point2f topLeft = cam.ProjectPoint(0, 0, width, height);
 	Point2f topRight = cam.ProjectPoint(width - 1, 0, width, height);
@@ -92,8 +239,8 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 	botRight -= origin;
 	botLeft -= origin;
 
-	int outWidth = 800;
-	int outHeight = outWidth * (outUHeight / outUWidth);
+	int outHeight = OUT_WIDTH * (outUHeight / outUWidth);
+	*imgSize = Size(OUT_WIDTH, outHeight);
 
 
 
@@ -109,49 +256,56 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 	inputQuad.at<float>(3, 0) = 0;
 	inputQuad.at<float>(3, 1) = height - 1;
 
-	outputQuad.at<float>(0, 0) = topLeft.x * outWidth / outUWidth;
+	outputQuad.at<float>(0, 0) = topLeft.x * OUT_WIDTH / outUWidth;
 	outputQuad.at<float>(0, 1) = topLeft.y * outHeight / outUHeight;
 
-	outputQuad.at<float>(1, 0) = topRight.x * outWidth / outUWidth;
+	outputQuad.at<float>(1, 0) = topRight.x * OUT_WIDTH / outUWidth;
 	outputQuad.at<float>(1, 1) = topRight.y * outHeight / outUHeight;
 
-	outputQuad.at<float>(2, 0) = botRight.x * outWidth / outUWidth;
+	outputQuad.at<float>(2, 0) = botRight.x * OUT_WIDTH / outUWidth;
 	outputQuad.at<float>(2, 1) = botRight.y * outHeight / outUHeight;
 
-	outputQuad.at<float>(3, 0) = botLeft.x * outWidth / outUWidth;
+	outputQuad.at<float>(3, 0) = botLeft.x * OUT_WIDTH / outUWidth;
 	outputQuad.at<float>(3, 1) = botLeft.y * outHeight / outUHeight;
 
+	// Undo origin transform
+	topLeft += origin;
+	topRight += origin;
+	botRight += origin;
+	botLeft += origin;
+
+	*realRect = Rect2f(topLeft, Size2f(outUWidth, outUHeight));
 
 
 	lambda = getPerspectiveTransform(inputQuad, outputQuad);
-	warpPerspective(image, warped, lambda, Size(outWidth, outHeight));
+	Mat lambdaInverse = getPerspectiveTransform(outputQuad, inputQuad);
+	warpPerspective(image, warped, lambda, Size(OUT_WIDTH, outHeight));
 
 	Mat flippedWarped(warped.rows, warped.cols, CV_8UC3);
 	flip(warped, flippedWarped, 0);
 
 	// Perspective warp completed
 
-	const int nwindows = 30;
-	int windowHeight = outHeight / nwindows;
-	int margin = windowHeight;
+	int windowHeight = outHeight / N_WINDOWS;
+	int margin = WINDOW_WIDTH / 2;
 
 	// Begin sliding window search
-	int leftx = outWidth / 2 - margin - 5;
-	int rightx = outWidth / 2 + margin + 5;
+	int leftx = OUT_WIDTH / 2 - margin - 1;
+	int rightx = OUT_WIDTH / 2 + margin + 1;
 
 	// Center of each window
-	vector<Point2f> leftLaneComplex(0);
-	vector<Point2f> rightLaneComplex(0);
+	std::vector<Point2f> leftLaneComplex(0);
+	std::vector<Point2f> rightLaneComplex(0);
 
 	Mat slidingImg(flippedWarped);
-#ifdef _DEBUG
+#ifdef _D_DEBUG
 	Mat slidImgDeb = slidingImg.clone();
 #endif
 
-#ifdef _DEBUG
-	printf("Img dimension: (%d, %d)\n", outWidth, outHeight);
+#ifdef _D_DEBUG
+	printf("Img dimension: (%d, %d)\n", OUT_WIDTH, outHeight);
 #endif
-	for (int n = 0; n < nwindows; n++)
+	for (int n = 0; n < N_WINDOWS; n++)
 	{
 		int winLow = outHeight - (n + 1)*windowHeight;
 		int winHigh = outHeight - (n)*windowHeight - 1;
@@ -161,7 +315,7 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 		int winRightRight = rightx + margin;
 		
 
-#ifdef _DEBUG
+#ifdef _D_DEBUG
 		printf("Left: (%d, %d)-(%d, %d)\t Right:(%d, %d)-(%d, %d)\n", winLeftLeft, winLow, winLeftRight, winHigh, winRightLeft, winLow, winRightRight, winHigh);
 
 		rectangle(slidImgDeb, Rect(winLeftLeft, winLow, margin*2, windowHeight), Scalar(100, 100, 255), 1);
@@ -177,7 +331,7 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 		{
 			for (int x = winLeftLeft; x < winLeftRight; x++)
 			{
-				if (x >= 0 && x < outWidth && slidingImg.at<Vec3b>(y, x)[0] > 0)
+				if (x >= 0 && x < OUT_WIDTH && slidingImg.at<Vec3b>(y, x)[0] > 0)
 				{
 					leftPoints.push_back(Point2i(x, y));
 					leftsum += x;
@@ -185,7 +339,7 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 			}
 			for (int x = winRightLeft; x < winRightRight; x++)
 			{
-				if (x >= 0 && x <= outWidth && slidingImg.at<Vec3b>(y, x)[0] > 0)
+				if (x >= 0 && x < OUT_WIDTH && slidingImg.at<Vec3b>(y, x)[0] > 0)
 				{
 					rightPoints.push_back(Point2i(x, y));
 					rightsum += x;
@@ -203,11 +357,11 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 		{
 			leftLaneComplex.push_back(Point2f(leftx, yCenter));
 
-			vector<float> leftLine(4);
+			std::vector<float> leftLine(4);
 			fitLine(leftPoints, leftLine, DIST_L2, 0, 0.01, 0.01);
 
 			float u = ((winLow + winHigh) / 2 - windowHeight - leftLine[3]) / leftLine[1];
-#ifdef _DEBUG
+#ifdef _D_DEBUG
 			line(slidImgDeb, Point2f(leftLine[2], leftLine[3]), Point2f(leftLine[2] + leftLine[0] * u, leftLine[3] + leftLine[1] * u), Scalar(0, 255, 0));
 #endif
 			// y1 = y0 + uv_y
@@ -223,10 +377,10 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 		{
 			rightLaneComplex.push_back(Point2f(rightx, yCenter));
 
-			vector<float> rightLine(4);
+			std::vector<float> rightLine(4);
 			fitLine(rightPoints, rightLine, DIST_L2, 0, 0.01, 0.01);
 			float u = ((winLow + winHigh) / 2 - windowHeight - rightLine[3]) / rightLine[1];
-#ifdef _DEBUG
+#ifdef _D_DEBUG
 			line(slidImgDeb, Point2f(rightLine[2], rightLine[3]), Point2f(rightLine[2] + rightLine[0] * u, rightLine[3] + rightLine[1] * u), Scalar(0, 255, 0));
 #endif
 			rightx = (int)(rightLine[2] + u * rightLine[0]);
@@ -236,10 +390,10 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 		if (rightPoints.size() == 0 || leftPoints.size() == 0) break;
 	}
 
-#ifdef _DEBUG
+#ifdef _D_DEBUG
 	imshow("Sliding debug", slidImgDeb);
 
-	Mat lanesDebug(Size(outWidth, outHeight), CV_8UC3, Scalar(0, 0, 0));
+	Mat lanesDebug(Size(OUT_WIDTH, outHeight), CV_8UC3, Scalar(0, 0, 0));
 	for (int i = 1; i < leftLaneComplex.size(); i++)
 	{
 		line(lanesDebug, leftLaneComplex[i - 1], leftLaneComplex[i], Scalar(0, 0, 255));
@@ -250,8 +404,27 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam)
 	}
 
 	imshow("Lanes Path", lanesDebug);
+
+	Mat lanesFlippedDeb;
+	Mat lanesCamDebug;
+	flip(lanesDebug, lanesFlippedDeb, 0);
+	warpPerspective(lanesFlippedDeb, lanesCamDebug, lambda, Size(width, height), WARP_INVERSE_MAP);
+	imshow("Lanes Path Cam", lanesCamDebug);
 #endif
+
+	Path path;
+	Edge left;
+	Edge right;
+
+	for (int i = 0; i < leftLaneComplex.size(); i++)
+	{
+		left.waypoints.push_back(Waypoint(leftLaneComplex[i], false));
+	}
+	for (int i = 0; i < rightLaneComplex.size(); i++)
+	{
+		right.waypoints.push_back(Waypoint(rightLaneComplex[i], false));
+	}
 		
 
-	return Path();
+	return path;
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <opencv2/core.hpp>
 
 class Waypoint
 {
@@ -9,6 +10,8 @@ private:
 public:
 	Waypoint();
 	~Waypoint();
+
+	Waypoint(cv::Point2f position, bool insideIsLeft);
 
 	float x;
 	float y;

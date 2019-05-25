@@ -6,6 +6,13 @@ Waypoint::Waypoint()
 {
 }
 
+Waypoint::Waypoint(cv::Point2f pos, bool insideIsLeft)
+{
+	x = pos.x;
+	y = pos.y;
+	this->insideIsLeft = insideIsLeft;
+}
+
 
 Waypoint::~Waypoint()
 {
