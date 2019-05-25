@@ -8,9 +8,10 @@
 #define IN_HEIGHT 60
 
 #define OUT_WIDTH 200
-#define HISTOGRAM_SCAN_HEIGHT 100
+#define HISTOGRAM_SCAN_HEIGHT 50
 #define N_WINDOWS 30
 #define WINDOW_WIDTH 10
+#define MIN_WINDOW_POINTS 1
 
 #ifdef _DEBUG
 #define _D_DEBUG
@@ -120,13 +121,13 @@ int main_udp()
 				{
 					Waypoint point1 = screenPath.left.waypoints[i - 1];
 					Waypoint point2 = screenPath.left.waypoints[i];
-					line(dispPath, Point2i(point1.x, point1.y), Point2i(point2.x, point2.y), Scalar(0, 0, 255));
+					line(dispPath, Point2i((int)point1.x, (int)point1.y), Point2i((int)point2.x, (int)point2.y), Scalar(0, 0, 255));
 				}
 				for (int i = 1; i < screenPath.right.waypoints.size(); i++)
 				{
 					Waypoint point1 = screenPath.right.waypoints[i - 1];
 					Waypoint point2 = screenPath.right.waypoints[i];
-					line(dispPath, Point2i(point1.x, point1.y), Point2i(point2.x, point2.y), Scalar(255, 0, 0));
+					line(dispPath, Point2i((int)point1.x, (int)point1.y), Point2i((int)point2.x, (int)point2.y), Scalar(255, 0, 0));
 				}
 
 				// Path that is actually in floor space
@@ -135,7 +136,7 @@ int main_udp()
 				floorPath.right = transformEdge(screenPath.right, imgSize, realRect);
 
 				std::string serializedFloorPath = floorPath.serialize();
-				sendto(socketS, serializedFloorPath.c_str(), serializedFloorPath.length(), 0, (sockaddr*)&dest, sizeof(dest));
+				sendto(socketS, serializedFloorPath.c_str(), (int)serializedFloorPath.length(), 0, (sockaddr*)&dest, sizeof(dest));
 
 				imshow("Path", dispPath);
 				waitKey(1);
@@ -242,7 +243,7 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2
 	botRight -= origin;
 	botLeft -= origin;
 
-	int outHeight = OUT_WIDTH * (outUHeight / outUWidth);
+	int outHeight = (int)(OUT_WIDTH * (outUHeight / outUWidth));
 	*imgSize = Size(OUT_WIDTH, outHeight);
 
 
@@ -310,6 +311,9 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2
 	line(slidImgDeb, Point(0, outHeight - HISTOGRAM_SCAN_HEIGHT), Point(OUT_WIDTH - 1, outHeight - HISTOGRAM_SCAN_HEIGHT), Scalar(255, 0, 255));
 #endif
 
+	// Keep track whether any windows have contained points yet
+	bool windowHasContainedPoints = false;
+
 #ifdef _D_DEBUG
 	printf("Img dimension: (%d, %d)\n", OUT_WIDTH, outHeight);
 #endif
@@ -355,15 +359,15 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2
 			}
 		}
 
-		float yCenter = (winLow + winHigh) / 2;
+		float yCenter = (winLow + winHigh) / 2.f;
 
 		// To calculate next leftx, use a best fit line of the points
 		// in this window to estimate where the points in the
 		// next window will be
 
-		if (leftPoints.size() > 0)
+		if (leftPoints.size() >= MIN_WINDOW_POINTS)
 		{
-			leftLaneComplex.push_back(Point2f(leftx, yCenter));
+			leftLaneComplex.push_back(Point2f((float)leftx, yCenter));
 
 			std::vector<float> leftLine(4);
 			fitLine(leftPoints, leftLine, DIST_L2, 0, 0.01, 0.01);
@@ -379,11 +383,11 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2
 			// x1 = x0 + (y1 - y0) * v_x / v_y
 
 			leftx = (int)(leftLine[2] + u * leftLine[0]);
-			leftx = (leftx + leftsum / leftPoints.size()) / 2;
+			leftx = (leftx + leftsum / (int)leftPoints.size()) / 2;
 		}
-		if (rightPoints.size() > 0)
+		if (rightPoints.size() >= MIN_WINDOW_POINTS)
 		{
-			rightLaneComplex.push_back(Point2f(rightx, yCenter));
+			rightLaneComplex.push_back(Point2f((float)rightx, yCenter));
 
 			std::vector<float> rightLine(4);
 			fitLine(rightPoints, rightLine, DIST_L2, 0, 0.01, 0.01);
@@ -392,10 +396,11 @@ Path CreatePathFromBitmap(bool* bitmap, int width, int height, Camera cam, Rect2
 			line(slidImgDeb, Point2f(rightLine[2], rightLine[3]), Point2f(rightLine[2] + rightLine[0] * u, rightLine[3] + rightLine[1] * u), Scalar(0, 255, 0));
 #endif
 			rightx = (int)(rightLine[2] + u * rightLine[0]);
-			rightx = (rightx + rightsum / rightPoints.size()) / 2;
+			rightx = (rightx + rightsum / (int)rightPoints.size()) / 2;
 		}
 
-		if (rightPoints.size() == 0 || leftPoints.size() == 0) break;
+		if ((rightPoints.size() < MIN_WINDOW_POINTS || leftPoints.size() < MIN_WINDOW_POINTS) && windowHasContainedPoints) break;
+		else if (rightPoints.size() >= MIN_WINDOW_POINTS || leftPoints.size() >= MIN_WINDOW_POINTS) windowHasContainedPoints = true;
 	}
 
 #ifdef _D_DEBUG
@@ -460,7 +465,7 @@ int findPeakCol(std::vector<int> histogram, int colStart, int colEnd)
 	if (colStart < 0 || colStart > histogram.size()) return -1;
 	if (colEnd < 0 || colEnd > histogram.size() || colEnd <= colStart) return -1;
 
-	int max = -1e9;
+	int max = -1000000000;
 	int maxIndex = -1;
 	for (int i = colStart; i < colEnd; i++)
 	{
