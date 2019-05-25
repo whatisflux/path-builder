@@ -1,5 +1,6 @@
 #include <iostream>
 #include <winsock2.h>
+#include <Ws2tcpip.h>
 #include <opencv2/opencv.hpp>
 #include "Path.h"
 #include "Camera.h"
@@ -12,6 +13,9 @@
 #define N_WINDOWS 30
 #define WINDOW_WIDTH 10
 #define MIN_WINDOW_POINTS 1
+
+#define SRC_IP "127.0.0.1"
+#define DST_IP "192.168.49.1"
 
 #ifdef _DEBUG
 #define _D_DEBUG
@@ -35,6 +39,18 @@ Edge transformEdge(Edge edge, Size src, Rect2f dst)
 	}
 	return edgeT;
 }
+sockaddr_in createSockAddr(const char* ip, int port)
+{
+	struct sockaddr_in addr;
+	addr.sin_family = AF_INET;
+	addr.sin_port = port;
+
+	ULONG* addrUlong = new ULONG;
+	inet_pton(AF_INET, ip, addrUlong);
+	addr.sin_addr.s_addr = *addrUlong;
+
+	return addr;
+}
 
 std::vector<int> generateHistogram(Mat image, int rowStart, int rowEnd);
 int findPeakCol(std::vector<int> histogram, int colStart, int colEnd);
@@ -46,7 +62,7 @@ int main_test();
 
 int main()
 {
-	return main_test();
+	return main_udp();
 }
 
 int main_udp()
@@ -59,19 +75,18 @@ int main_udp()
 		printf("ERROR STARTING WINSOCK: %d\n", status);
 	}
 
-	struct sockaddr_in local;
+	struct sockaddr_in local = createSockAddr(SRC_IP, 1234);
 	struct sockaddr_in from;
 	int fromlen = sizeof(from);
-	local.sin_family = AF_INET;
-	local.sin_port = htons(1234);
-	local.sin_addr.s_addr = INADDR_ANY;
 
 	struct sockaddr_in dest;
 	dest.sin_family = AF_INET;
-	//dest.sin_addr.s_addr = inet_addr("192.168.43.99");
-	dest.sin_port = htons(1234);
+	ULONG* destAddr = new ULONG;
+	inet_pton(AF_INET, DST_IP, destAddr);
+	dest.sin_addr.s_addr = *destAddr;
+	dest.sin_port = htons(1235);
 
-	SOCKET socketS = socket(AF_INET, SOCK_DGRAM, 0);
+	SOCKET socketS = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (socketS == INVALID_SOCKET)
 	{
 		printf("ERROR MAKING SOCKET: %d", WSAGetLastError());
@@ -92,7 +107,7 @@ int main_udp()
 		ZeroMemory(buffer, sizeof(buffer));
 
 		int bytes = recvfrom(socketS, buffer, sizeof(buffer), 0, (sockaddr*)&from, &fromlen);
-		printf("Message received, checking error\n");
+		printf("Message received, checking for error\n");
 		if (bytes != SOCKET_ERROR)
 		{
 			printf("Received message from %s (%d bytes)\n", "someone", bytes);
