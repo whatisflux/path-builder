@@ -125,7 +125,7 @@ int main_udp()
 int main_test()
 {
 	Mat image;
-	image = imread("resources/test-1.png", IMREAD_COLOR); // Read the file
+	image = imread("resources/test-2.png", IMREAD_COLOR); // Read the file
 
 	if (!image.data) // Check for invalid input
 	{
@@ -136,15 +136,6 @@ int main_test()
 	cvtColor(image, image, COLOR_RGB2GRAY);
 
 	resize(image, image, Size(160, 120), 0, 0);
-
-	/*Mat imageNoise = image.clone();
-	randn(imageNoise, 128, 32);
-	threshold(imageNoise, imageNoise, 200, 255, THRESH_BINARY);
-	image = image + imageNoise;
-
-	randn(imageNoise, 128, 32);
-	threshold(imageNoise, imageNoise, 180, 255, THRESH_BINARY_INV);
-	bitwise_and(image, imageNoise, image);*/
 
 	Craig c;
 	auto path = c.processImage(image);

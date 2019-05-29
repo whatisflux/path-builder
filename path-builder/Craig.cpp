@@ -53,7 +53,7 @@ Point Craig::findNextPoint(Mat img, Point previous, Point current, Mat debugOut)
 	int xsum = 0;
 	int xcount = 0;
 	int x = next.x;
-	while (img.at<uchar>(next.y, x) > 0 && x < img.cols)
+	while (x < img.cols && img.at<uchar>(next.y, x) > 0)
 	{
 		xsum += x;
 		xcount++;
@@ -63,7 +63,7 @@ Point Craig::findNextPoint(Mat img, Point previous, Point current, Mat debugOut)
 		x++;
 	}
 	x = next.x;
-	while (img.at<uchar>(next.y, x) > 0 && x >= 0)
+	while (x >= 0 && img.at<uchar>(next.y, x) > 0)
 	{
 		xsum += x;
 		xcount++;
@@ -146,7 +146,7 @@ std::vector<Point2f> Craig::processImage(Mat &mat)
 
 #ifdef _D_DEBUG
 	Mat imgDeb;
-	resize(img, imgDeb, Size(), 4, 4, INTER_NEAREST);
+	resize(img, imgDeb, Size(), 1, 1, INTER_NEAREST);
 	imshow("Preprocessed", imgDeb);
 #endif
 	Mat debugOut;
@@ -171,7 +171,7 @@ std::vector<Point2f> Craig::processImage(Mat &mat)
 	}
 
 #ifdef _D_DEBUG
-	resize(debugOut, debugOut, Size(), 4, 4, INTER_NEAREST);
+	resize(debugOut, debugOut, Size(), 1, 1, INTER_NEAREST);
 	imshow("Debug info", debugOut);
 #endif
 
