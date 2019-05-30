@@ -128,7 +128,7 @@ int main()
 int main_test()
 {
 	Mat image;
-	image = imread("resources/test-2.png", IMREAD_COLOR); // Read the file
+	image = imread("resources/test-1.png", IMREAD_COLOR); // Read the file
 
 	if (!image.data) // Check for invalid input
 	{
@@ -144,7 +144,7 @@ int main_test()
 	Mat deb;
 	auto path = c.processImage(image, deb);
 	imshow("Input", image);
-	resize(deb, deb, Size(), 4, 4, INTER_NEAREST);
+	resize(deb, deb, Size(), 8, 8, INTER_NEAREST);
 	imshow("Debug", deb);
 
 	waitKey(0); // Wait for a keystroke in the window

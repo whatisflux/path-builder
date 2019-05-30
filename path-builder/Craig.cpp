@@ -4,6 +4,11 @@
 
 #include "Craig.h"
 
+bool Craig::pointInImage(Point p, Mat img)
+{
+	return p.x >= 0 && p.x < img.cols && p.y >= 0 && p.y < img.rows;
+}
+
 Point2f Craig::tranformPoint(Point2f s, Size imgSize)
 {
 	Point2f t;
@@ -18,62 +23,74 @@ Point Craig::findNextPoint(Mat img, Point previous, Point current, Mat debugOut)
 {
 	Point2f ds = current - previous;
 	Point2f u = ds / hypot(ds.x, ds.y);
+	Point2f v(-u.y, u.x); // Perpendicular to u
+	printf("(%d, %d)::(%d, %d) -> (%f, %f)\n", previous.x, previous.y, current.x, current.y, u.x, u.y);
 	Point next = current + (Point)(u * WALK_LENGTH);
-	if (next.y < MIN_SCAN_Y || next.y >= img.rows || next.x < 0 || next.x >= img.cols);
+	if (next.y < MIN_SCAN_Y || next.y >= img.rows || next.x < 0 || next.x >= img.cols) return Point(-1, -1);
 
 	if (img.at<uchar>(next) == 0)
 	{
 #ifdef _D_DEBUG
-		debugOut.at<Vec3b>(next) = Vec3b(255, 255, 0);
+		debugOut.at<Vec3b>(next) = Vec3b(255, 200, 0);
 #endif
-		// Scan sideways to look for path
-		int x = next.x;
-		while (x < img.cols && x - next.x <= HORIZ_SCAN_OFFSET && img.at<uchar>(next.y, x) == 0)
+		bool pointFound = false;
+
+		// Scan perpendicular to u
+
+		for (int d = 1; d < HORIZ_SCAN_OFFSET; d++)
 		{
+			Point right = next + (Point)(v * d);
+			Point left = next - (Point)(v * d);
+
 #ifdef _D_DEBUG
-			debugOut.at<Vec3b>(next.y, x) = Vec3b(0, 150, 255);
+			if (pointInImage(right, img)) debugOut.at<Vec3b>(right) = Vec3b(0, 150, 255);
 #endif
-			x++;
-		}
-		if (x < img.cols && img.at<uchar>(next.y, x) == 0)
-		{
-			x = next.x;
-			while (x >= 0 && next.x - x <= HORIZ_SCAN_OFFSET && img.at<uchar>(next.y, x) == 0)
+			if (pointInImage(right, img) && right.y > MIN_SCAN_Y && img.at<uchar>(right) > 0)
 			{
+				pointFound = true;
+				next = right;
+				break;
+			}
+
 #ifdef _D_DEBUG
-				debugOut.at<Vec3b>(next.y, x) = Vec3b(0, 150, 255);
+			if (pointInImage(left, img)) debugOut.at<Vec3b>(left) = Vec3b(0, 150, 255);
 #endif
-				x--;
+			if (pointInImage(left, img) && left.y > MIN_SCAN_Y && img.at<uchar>(left) > 0)
+			{
+				pointFound = true;
+				next = left;
+				break;
 			}
 		}
-		if (x < 0 || x >= img.cols || next.y < 0 || next.y >= img.rows || img.at<uchar>(next.y, x) == 0) return Point(-1, -1);
-		next.x = x;
+
+		if (!pointFound) return Point(-1, -1);
 	}
 
-	int xsum = 0;
-	int xcount = 0;
+	Point2f pointSum(0, 0);
+	int pointCount = 0;
 	int x = next.x;
-	while (x < img.cols && img.at<uchar>(next.y, x) > 0)
+	Point2f tmp = next;
+	while (pointInImage(tmp, img) && img.at<uchar>(tmp) > 0)
 	{
-		xsum += x;
-		xcount++;
+		pointSum += tmp;
+		pointCount++;
 #ifdef _D_DEBUG
-		debugOut.at<Vec3b>(next.y, x) = Vec3b(0, 255, 0);
+		debugOut.at<Vec3b>(tmp) = Vec3b(0, 255, 0);
 #endif
-		x++;
+		tmp += v;
 	}
-	x = next.x;
-	while (x >= 0 && img.at<uchar>(next.y, x) > 0)
+	tmp = (Point2f)next - v;
+	while (pointInImage(tmp, img) && img.at<uchar>(tmp) > 0)
 	{
-		xsum += x;
-		xcount++;
+		pointSum += tmp;
+		pointCount++;
 #ifdef _D_DEBUG
-		debugOut.at<Vec3b>(next.y, x) = Vec3b(0, 255, 0);
+		debugOut.at<Vec3b>(tmp) = Vec3b(0, 255, 0);
 #endif
-		x--;
+		tmp -= v;
 	}
 
-	next.x = xsum / xcount;
+	next = (Point)(pointSum / pointCount);
 
 	return next;
 }
@@ -158,6 +175,8 @@ std::vector<Point2f> Craig::processImage(Mat &mat, Mat &debugOut)
 		points.push_back(currentPoint);
 #ifdef _D_DEBUG
 		line(debugOut, previousPoint, currentPoint, Scalar(255, 0, 0));
+		debugOut.at<Vec3b>(currentPoint) = Vec3b(255, 0, 100);
+		debugOut.at<Vec3b>(previousPoint) = Vec3b(255, 0, 100);
 #endif
 		Point tmp = currentPoint;
 		currentPoint = findNextPoint(img, previousPoint, currentPoint, debugOut);

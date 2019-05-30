@@ -28,6 +28,8 @@ using namespace cv;
 
 class Craig {
 private:
+	bool pointInImage(Point p, Mat img);
+
 	Point2f tranformPoint(Point2f o, Size imgSize);
 
 	Point findFirstPoint(Mat img, Mat debugOut);
