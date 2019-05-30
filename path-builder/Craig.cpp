@@ -19,7 +19,7 @@ Point Craig::findNextPoint(Mat img, Point previous, Point current, Mat debugOut)
 	Point2f ds = current - previous;
 	Point2f u = ds / hypot(ds.x, ds.y);
 	Point next = current + (Point)(u * WALK_LENGTH);
-	if (next.y < MIN_SCAN_Y || next.y >= img.rows || next.x < 0 || next.x >= img.cols) return Point(-1, -1);
+	if (next.y < MIN_SCAN_Y || next.y >= img.rows || next.x < 0 || next.x >= img.cols);
 
 	if (img.at<uchar>(next) == 0)
 	{
@@ -35,7 +35,7 @@ Point Craig::findNextPoint(Mat img, Point previous, Point current, Mat debugOut)
 #endif
 			x++;
 		}
-		if (img.at<uchar>(next.y, x) == 0)
+		if (x < img.cols && img.at<uchar>(next.y, x) == 0)
 		{
 			x = next.x;
 			while (x >= 0 && next.x - x <= HORIZ_SCAN_OFFSET && img.at<uchar>(next.y, x) == 0)
@@ -132,7 +132,7 @@ Point Craig::findFirstPoint(Mat img, Mat debugOut)
 	return Point(avgx, avgy);
 }
 
-std::vector<Point2f> Craig::processImage(Mat &mat)
+std::vector<Point2f> Craig::processImage(Mat &mat, Mat &debugOut)
 {
 	Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(3, 3), Point(-1, -1));
 	Mat img = mat.clone();
@@ -144,12 +144,6 @@ std::vector<Point2f> Craig::processImage(Mat &mat)
 	//resize(img, img, Size(80, 60));
 	threshold(img, img, 1, 255, THRESH_BINARY);
 
-#ifdef _D_DEBUG
-	Mat imgDeb;
-	resize(img, imgDeb, Size(), 1, 1, INTER_NEAREST);
-	imshow("Preprocessed", imgDeb);
-#endif
-	Mat debugOut;
 	cvtColor(img, debugOut, COLOR_GRAY2BGR);
 
 	std::vector<Point2f> points(0);
@@ -169,11 +163,6 @@ std::vector<Point2f> Craig::processImage(Mat &mat)
 		currentPoint = findNextPoint(img, previousPoint, currentPoint, debugOut);
 		previousPoint = tmp;
 	}
-
-#ifdef _D_DEBUG
-	resize(debugOut, debugOut, Size(), 1, 1, INTER_NEAREST);
-	imshow("Debug info", debugOut);
-#endif
 
 	return points;
 }

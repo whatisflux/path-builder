@@ -33,7 +33,7 @@ private:
 	Point findFirstPoint(Mat img, Mat debugOut);
 	Point findNextPoint(Mat img, Point previous, Point current, Mat debugOut);
 public:
-	std::vector<Point2f> processImage(Mat &mat);
+	std::vector<Point2f> processImage(Mat &mat, Mat &debugOut);
 };
 
 
