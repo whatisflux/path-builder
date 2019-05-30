@@ -32,99 +32,101 @@
 
 using namespace cv;
 
-//struct sockaddr_in createSockAddr(const char* ip, int port)
-//{
-//	struct sockaddr_in addr;
-//	addr.sin_family = AF_INET;
-//	addr.sin_port = htons(port);
-//
-//	ULONG* addrUlong = new ULONG;
-//	inet_pton(AF_INET, ip, addrUlong);
-//	addr.sin_addr.s_addr = *addrUlong;
-//
-//	return addr;
-//}
+struct sockaddr_in createSockAddr(const char* ip, int port)
+{
+	struct sockaddr_in addr;
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
 
-//int main_udp();
+	ULONG* addrUlong = new ULONG;
+	inet_pton(AF_INET, ip, addrUlong);
+	addr.sin_addr.s_addr = *addrUlong;
+
+	return addr;
+}
+
+int main_udp();
 int main_test();
-//int main_video();
+int main_video();
 
 int main()
 {
 	return main_test();
 }
 
-//int main_udp()
-//{
-//	// Setup socket
-//	WSADATA wsaData;
-//	int status = WSAStartup(MAKEWORD(2, 2), &wsaData);
-//	if (status != NO_ERROR)
-//	{
-//		printf("ERROR STARTING WINSOCK: %d\n", status);
-//	}
-//
-//	struct sockaddr_in local = createSockAddr(SRC_IP, 1234);
-//	struct sockaddr_in from;
-//	int fromlen = sizeof(from);
-//
-//	struct sockaddr_in dest = createSockAddr(DST_IP, 1235);
-//
-//	SOCKET socketS = socket(AF_INET, SOCK_DGRAM, 0);
-//	if (socketS == INVALID_SOCKET)
-//	{
-//		printf("ERROR MAKING SOCKET: %d", WSAGetLastError());
-//	}
-//	int result = bind(socketS, (sockaddr*)&local, sizeof(local));
-//	if (result == SOCKET_ERROR)
-//	{
-//		printf("ERROR BINDING SOCKET: %d", WSAGetLastError());
-//	}
-//
-//	while (true)
-//	{
-//		char buffer[4096];
-//		ZeroMemory(buffer, sizeof(buffer));
-//
-//		int bytes = recvfrom(socketS, buffer, sizeof(buffer), 0, (sockaddr*)&from, &fromlen);
-//		printf("Message received, checking for error\n");
-//		if (bytes != SOCKET_ERROR)
-//		{
-//			printf("Received message from %s (%d bytes)\n", "someone", bytes);
-//			if (bytes == IN_WIDTH * IN_HEIGHT / 8)
-//			{
-//				// Image was received
-//				Mat image(Size(IN_WIDTH, IN_HEIGHT), CV_8UC1, Scalar(0, 0, 0));
-//
-//				for (int i = 0; i < bytes; i++)
-//				{
-//					for (int bit = 0; bit < 8; bit++)
-//					{
-//						// Get the bit-th bit of the byte at buffer[i]
-//						unsigned char val = (buffer[i] >> bit) & 1;
-//						int p = i * 8 + bit;
-//						int y = p / IN_WIDTH;
-//						int x = p % IN_WIDTH;
-//						image.at<uchar>(Point(x, y)) = val * 255;
-//					}
-//				}
-//
-//				Craig c;
-//				Mat deb;
-//				auto path = c.processImage(image, deb);
-//
-//				waitKey(1);
-//			}
-//		}
-//		else
-//		{
-//			printf("Error! WSA: %d\n", WSAGetLastError());
-//		}
-//	}
-//
-//	return 0;
-//}
-//
+int main_udp()
+{
+	// Setup socket
+	WSADATA wsaData;
+	int status = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (status != NO_ERROR)
+	{
+		printf("ERROR STARTING WINSOCK: %d\n", status);
+	}
+
+	struct sockaddr_in local = createSockAddr(SRC_IP, 1234);
+	struct sockaddr_in from;
+	int fromlen = sizeof(from);
+
+	struct sockaddr_in dest = createSockAddr(DST_IP, 1235);
+
+	SOCKET socketS = socket(AF_INET, SOCK_DGRAM, 0);
+	if (socketS == INVALID_SOCKET)
+	{
+		printf("ERROR MAKING SOCKET: %d", WSAGetLastError());
+	}
+	int result = bind(socketS, (sockaddr*)&local, sizeof(local));
+	if (result == SOCKET_ERROR)
+	{
+		printf("ERROR BINDING SOCKET: %d", WSAGetLastError());
+	}
+
+	while (true)
+	{
+		char buffer[4096];
+		ZeroMemory(buffer, sizeof(buffer));
+
+		int bytes = recvfrom(socketS, buffer, sizeof(buffer), 0, (sockaddr*)&from, &fromlen);
+		printf("Message received, checking for error\n");
+		if (bytes != SOCKET_ERROR)
+		{
+			printf("Received message from %s (%d bytes)\n", "someone", bytes);
+			if (bytes == IN_WIDTH * IN_HEIGHT / 8)
+			{
+				// Image was received
+				Mat image(Size(IN_WIDTH, IN_HEIGHT), CV_8UC1, Scalar(0, 0, 0));
+
+				for (int i = 0; i < bytes; i++)
+				{
+					for (int bit = 0; bit < 8; bit++)
+					{
+						// Get the bit-th bit of the byte at buffer[i]
+						unsigned char val = (buffer[i] >> bit) & 1;
+						int p = i * 8 + bit;
+						int y = p / IN_WIDTH;
+						int x = p % IN_WIDTH;
+						image.at<uchar>(Point(x, y)) = val * 255;
+					}
+				}
+
+				Craig c;
+				Mat deb;
+				auto path = c.processImage(image, deb);
+				resize(deb, deb, Size(), 5, 5, INTER_NEAREST);
+				imshow("Debug", deb);
+
+				waitKey(1);
+			}
+		}
+		else
+		{
+			printf("Error! WSA: %d\n", WSAGetLastError());
+		}
+	}
+
+	return 0;
+}
+
 int main_test()
 {
 	Mat image;
