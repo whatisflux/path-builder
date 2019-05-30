@@ -24,7 +24,6 @@ Point Craig::findNextPoint(Mat img, Point previous, Point current, Mat debugOut)
 	Point2f ds = current - previous;
 	Point2f u = ds / hypot(ds.x, ds.y);
 	Point2f v(-u.y, u.x); // Perpendicular to u
-	printf("(%d, %d)::(%d, %d) -> (%f, %f)\n", previous.x, previous.y, current.x, current.y, u.x, u.y);
 	Point next = current + (Point)(u * WALK_LENGTH);
 	if (next.y < MIN_SCAN_Y || next.y >= img.rows || next.x < 0 || next.x >= img.cols) return Point(-1, -1);
 
